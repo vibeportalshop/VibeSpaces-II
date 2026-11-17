@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-display: 'Outfit', system-ui, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --vibe-accent: #c084fc;
+    --vibe-accent-secondary: #60a5fa;
+  }
+
+  body {
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono, .tabular-nums {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom Profile Theme Accents */
+[data-profile-theme="default"] {
+  --vibe-accent: #c084fc;
+  --vibe-accent-secondary: #60a5fa;
+}
+[data-profile-theme="ocean"] {
+  --vibe-accent: #38bdf8;
+  --vibe-accent-secondary: #34d399;
+}
+[data-profile-theme="sunset"] {
+  --vibe-accent: #fb923c;
+  --vibe-accent-secondary: #f43f5e;
+}
+[data-profile-theme="matrix"] {
+  --vibe-accent: #22c55e;
+  --vibe-accent-secondary: #14b8a6;
+}
+[data-profile-theme="rose"] {
+  --vibe-accent: #f472b6;
+  --vibe-accent-secondary: #a78bfa;
+}
+[data-profile-theme="monochrome"] {
+  --vibe-accent: #e2e8f0;
+  --vibe-accent-secondary: #94a3b8;
+}
+
+/* Subtle custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}

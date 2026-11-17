@@ -1,0 +1,10 @@
+{
+  "name": "VibeSpaces",
+  "description": "A quieter, intentional social platform and Discord-style Channel Spaces community with custom roles, live voice lounges, moodboards, and real-time notifications.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,328 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Global Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'co.vibecartel@gmail.com' ||
+        request.auth.token.email == 'aditya.shelke2011@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'createdAt']) &&
+        data.keys().hasOnly([
+          'uid', 'displayName', 'photoURL', 'bio', 'mood', 'activityStatus',
+          'profileTheme', 'isPrivate', 'streakCount', 'role', 'interests', 'badges', 'createdAt', 'updatedAt'
+        ]) &&
+        data.uid is string && data.uid.size() <= 128 && data.uid == userId && data.uid == request.auth.uid &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 40 &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 240)) &&
+        (!('mood' in data) || (data.mood is string && data.mood.size() <= 80)) &&
+        (!('activityStatus' in data) || (data.activityStatus is string && data.activityStatus.size() <= 100)) &&
+        (!('profileTheme' in data) || (data.profileTheme is string && data.profileTheme in ['default', 'ocean', 'sunset', 'matrix', 'rose', 'monochrome'])) &&
+        (!('isPrivate' in data) || data.isPrivate is bool) &&
+        (!('streakCount' in data) || (data.streakCount is int && data.streakCount >= 0 && data.streakCount <= 100000)) &&
+        (!('role' in data) || (data.role is string && data.role in ['owner', 'admin', 'moderator', 'member'])) &&
+        (!('interests' in data) || (data.interests is list && data.interests.size() <= 20 && (data.interests.size() == 0 || (data.interests[0] is string && data.interests[0].size() <= 40)))) &&
+        (!('badges' in data) || (data.badges is list && data.badges.size() <= 20 && (data.badges.size() == 0 || (data.badges[0] is string && data.badges[0].size() <= 40)))) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidCustomRule(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'conditionField', 'conditionValue', 'action', 'enabled', 'createdAt']) &&
+        data.keys().hasOnly(['ownerId', 'name', 'conditionField', 'conditionValue', 'action', 'enabled', 'createdAt', 'updatedAt']) &&
+        data.ownerId is string && data.ownerId.size() <= 128 && data.ownerId == request.auth.uid &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.conditionField is string && data.conditionField in ['keyword', 'author', 'space', 'category'] &&
+        data.conditionValue is string && data.conditionValue.size() >= 1 && data.conditionValue.size() <= 100 &&
+        data.action is string && data.action in ['mute', 'priority_push', 'email_digest', 'auto_flag'] &&
+        data.enabled is bool &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidVibePost(data) {
+      return data.keys().hasAll(['title', 'content', 'authorId', 'authorName', 'createdAt']) &&
+        data.keys().hasOnly([
+          'title', 'content', 'authorId', 'authorName', 'authorPhoto', 'authorColor',
+          'isOperator', 'anonymous', 'pinned', 'category', 'mediaUrl', 'mediaType',
+          'likeCount', 'fireCount', 'laughCount', 'cryCount', 'commentCount', 'createdAt', 'updatedAt'
+        ]) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.content is string && data.content.size() >= 1 && data.content.size() <= 2000 &&
+        data.authorId is string && data.authorId.size() <= 128 && data.authorId == request.auth.uid &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+        (!('authorPhoto' in data) || (data.authorPhoto is string && data.authorPhoto.size() <= 500)) &&
+        (!('authorColor' in data) || (data.authorColor is string && data.authorColor.size() <= 40)) &&
+        (!('isOperator' in data) || data.isOperator is bool) &&
+        (!('anonymous' in data) || data.anonymous is bool) &&
+        (!('pinned' in data) || data.pinned is bool) &&
+        (!('category' in data) || (data.category is string && data.category.size() <= 40)) &&
+        (!('mediaUrl' in data) || (data.mediaUrl is string && data.mediaUrl.size() <= 600)) &&
+        (!('mediaType' in data) || (data.mediaType is string && data.mediaType in ['none', 'image', 'music', 'moodboard'])) &&
+        (!('likeCount' in data) || (data.likeCount is int && data.likeCount >= 0)) &&
+        (!('fireCount' in data) || (data.fireCount is int && data.fireCount >= 0)) &&
+        (!('laughCount' in data) || (data.laughCount is int && data.laughCount >= 0)) &&
+        (!('cryCount' in data) || (data.cryCount is int && data.cryCount >= 0)) &&
+        (!('commentCount' in data) || (data.commentCount is int && data.commentCount >= 0)) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidChannelSpace(data) {
+      return data.keys().hasAll(['name', 'ownerId', 'inviteCode', 'isPublic', 'createdAt']) &&
+        data.keys().hasOnly([
+          'name', 'description', 'icon', 'banner', 'inviteCode', 'ownerId',
+          'ownerName', 'isPublic', 'vibeXP', 'level', 'createdAt', 'updatedAt'
+        ]) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 60 &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 300)) &&
+        (!('icon' in data) || (data.icon is string && data.icon.size() <= 500)) &&
+        (!('banner' in data) || (data.banner is string && data.banner.size() <= 500)) &&
+        data.inviteCode is string && data.inviteCode.size() >= 4 && data.inviteCode.size() <= 20 &&
+        data.ownerId is string && data.ownerId.size() <= 128 && data.ownerId == request.auth.uid &&
+        (!('ownerName' in data) || (data.ownerName is string && data.ownerName.size() <= 60)) &&
+        data.isPublic is bool &&
+        (!('vibeXP' in data) || (data.vibeXP is int && data.vibeXP >= 0)) &&
+        (!('level' in data) || (data.level is int && data.level >= 1 && data.level <= 10)) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidSpaceMessage(data, spaceId) {
+      return data.keys().hasAll(['spaceId', 'channelId', 'authorId', 'authorName', 'content', 'createdAt']) &&
+        data.keys().hasOnly([
+          'spaceId', 'channelId', 'authorId', 'authorName', 'authorPhoto',
+          'authorRoleName', 'authorRoleColor', 'content', 'pinned', 'createdAt', 'updatedAt'
+        ]) &&
+        data.spaceId is string && data.spaceId.size() <= 128 && data.spaceId == spaceId &&
+        data.channelId is string && data.channelId.size() >= 1 && data.channelId.size() <= 128 &&
+        data.authorId is string && data.authorId.size() <= 128 && data.authorId == request.auth.uid &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+        (!('authorPhoto' in data) || (data.authorPhoto is string && data.authorPhoto.size() <= 500)) &&
+        (!('authorRoleName' in data) || (data.authorRoleName is string && data.authorRoleName.size() <= 40)) &&
+        (!('authorRoleColor' in data) || (data.authorRoleColor is string && data.authorRoleColor.size() <= 20)) &&
+        data.content is string && data.content.size() >= 1 && data.content.size() <= 2000 &&
+        (!('pinned' in data) || data.pinned is bool) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidDirectMessage(data) {
+      return data.keys().hasAll(['chatId', 'senderId', 'recipientId', 'senderName', 'text', 'createdAt']) &&
+        data.keys().hasOnly(['chatId', 'senderId', 'recipientId', 'senderName', 'text', 'createdAt', 'expiresAt']) &&
+        data.chatId is string && data.chatId.size() >= 1 && data.chatId.size() <= 128 &&
+        data.senderId is string && data.senderId.size() <= 128 && data.senderId == request.auth.uid &&
+        data.recipientId is string && data.recipientId.size() <= 128 &&
+        data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 60 &&
+        data.text is string && data.text.size() >= 1 && data.text.size() <= 2000 &&
+        (!('expiresAt' in data) || data.expiresAt is timestamp) &&
+        data.createdAt is timestamp;
+    }
+
+    // 4. Collection Match Blocks
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (
+        request.auth.uid == userId ||
+        existing().isPrivate == false ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        existing().uid == request.auth.uid ||
+        existing().isPrivate == false
+      );
+      allow create: if isVerified() && isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        (!('role' in incoming()) || incoming().role == 'member' || isAdmin());
+      allow update: if isVerified() && isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() || (
+            request.auth.uid == userId &&
+            (!('role' in incoming()) || incoming().role == existing().role) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'photoURL', 'bio', 'mood', 'activityStatus',
+              'profileTheme', 'isPrivate', 'streakCount', 'interests', 'badges', 'updatedAt'
+            ]) &&
+            (!('updatedAt' in incoming()) || incoming().updatedAt == request.time)
+          )
+        );
+      allow delete: if isVerified() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+
+      match /rules/{ruleId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(ruleId) &&
+          request.auth.uid == userId &&
+          exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+        allow create: if isVerified() && isValidId(userId) && isValidId(ruleId) &&
+          request.auth.uid == userId &&
+          isValidCustomRule(incoming()) &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isVerified() && isValidId(userId) && isValidId(ruleId) &&
+          isValidCustomRule(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt && (
+            isAdmin() || (
+              request.auth.uid == userId &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'name', 'conditionField', 'conditionValue', 'action', 'enabled', 'updatedAt'
+              ]) &&
+              (!('updatedAt' in incoming()) || incoming().updatedAt == request.time) &&
+              exists(/databases/$(database)/documents/users/$(userId))
+            )
+          );
+        allow delete: if isVerified() && isValidId(userId) && isValidId(ruleId) &&
+          request.auth.uid == userId &&
+          exists(/databases/$(database)/documents/users/$(userId));
+      }
+    }
+
+    match /vibes/{vibeId} {
+      allow get: if isSignedIn() && isValidId(vibeId) && (
+        existing().authorId == request.auth.uid ||
+        existing().anonymous == false ||
+        existing().anonymous == true ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        existing().authorId == request.auth.uid ||
+        existing().title is string
+      );
+      allow create: if isVerified() && isValidId(vibeId) &&
+        isValidVibePost(incoming()) &&
+        incoming().createdAt == request.time &&
+        (!('pinned' in incoming()) || incoming().pinned == false || isAdmin()) &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow update: if isVerified() && isValidId(vibeId) &&
+        isValidVibePost(incoming()) &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          // Action 1: Author edits title/content
+          (request.auth.uid == existing().authorId &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'mediaUrl', 'mediaType', 'updatedAt']) &&
+            (!('updatedAt' in incoming()) || incoming().updatedAt == request.time)) ||
+          // Action 2: Community reaction/comment count update
+          (incoming().diff(existing()).affectedKeys().hasOnly(['likeCount', 'fireCount', 'laughCount', 'cryCount', 'commentCount', 'updatedAt']) &&
+            (!('updatedAt' in incoming()) || incoming().updatedAt == request.time))
+        );
+      allow delete: if isVerified() && isValidId(vibeId) && (request.auth.uid == existing().authorId || isAdmin());
+    }
+
+    match /channelSpaces/{spaceId} {
+      allow get: if isSignedIn() && isValidId(spaceId) && (
+        existing().isPublic == true ||
+        existing().ownerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        existing().isPublic == true ||
+        existing().ownerId == request.auth.uid
+      );
+      allow create: if isVerified() && isValidId(spaceId) &&
+        isValidChannelSpace(incoming()) &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow update: if isVerified() && isValidId(spaceId) &&
+        isValidChannelSpace(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          // Action 1: Space Owner updates space settings
+          (request.auth.uid == existing().ownerId &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'description', 'icon', 'banner', 'isPublic', 'vibeXP', 'level', 'updatedAt'
+            ]) &&
+            (!('updatedAt' in incoming()) || incoming().updatedAt == request.time)) ||
+          // Action 2: Community Vibe XP progression
+          (incoming().diff(existing()).affectedKeys().hasOnly(['vibeXP', 'level', 'updatedAt']) &&
+            (!('updatedAt' in incoming()) || incoming().updatedAt == request.time))
+        );
+      allow delete: if isVerified() && isValidId(spaceId) && (request.auth.uid == existing().ownerId || isAdmin());
+
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(spaceId) && isValidId(messageId) &&
+          exists(/databases/$(database)/documents/channelSpaces/$(spaceId));
+        allow list: if isSignedIn() && existing().spaceId == spaceId;
+        allow create: if isVerified() && isValidId(spaceId) && isValidId(messageId) &&
+          isValidSpaceMessage(incoming(), spaceId) &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/channelSpaces/$(spaceId));
+        allow update: if isVerified() && isValidId(spaceId) && isValidId(messageId) &&
+          isValidSpaceMessage(incoming(), spaceId) &&
+          incoming().authorId == existing().authorId &&
+          incoming().spaceId == existing().spaceId &&
+          incoming().createdAt == existing().createdAt && (
+            isAdmin() ||
+            (request.auth.uid == existing().authorId &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['content', 'updatedAt']) &&
+              (!('updatedAt' in incoming()) || incoming().updatedAt == request.time) &&
+              exists(/databases/$(database)/documents/channelSpaces/$(spaceId))) ||
+            (get(/databases/$(database)/documents/channelSpaces/$(spaceId)).data.ownerId == request.auth.uid &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['pinned', 'updatedAt']) &&
+              (!('updatedAt' in incoming()) || incoming().updatedAt == request.time))
+          );
+        allow delete: if isVerified() && isValidId(spaceId) && isValidId(messageId) && (
+          request.auth.uid == existing().authorId ||
+          get(/databases/$(database)/documents/channelSpaces/$(spaceId)).data.ownerId == request.auth.uid ||
+          isAdmin()
+        );
+      }
+    }
+
+    match /directMessages/{messageId} {
+      allow get: if isSignedIn() && isValidId(messageId) && (
+        existing().senderId == request.auth.uid ||
+        existing().recipientId == request.auth.uid
+      );
+      allow list: if isSignedIn() && (
+        existing().senderId == request.auth.uid ||
+        existing().recipientId == request.auth.uid
+      );
+      allow create: if isVerified() && isValidId(messageId) &&
+        isValidDirectMessage(incoming()) &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow update: if false;
+      allow delete: if isVerified() && isValidId(messageId) && (
+        existing().senderId == request.auth.uid ||
+        existing().recipientId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+  }
+}

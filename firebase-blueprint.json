@@ -1,0 +1,138 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public user profile and preferences in VibeSpaces.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "bio": { "type": "string", "maxLength": 240 },
+        "mood": { "type": "string", "maxLength": 80 },
+        "activityStatus": { "type": "string", "maxLength": 100 },
+        "profileTheme": { "type": "string", "enum": ["default", "ocean", "sunset", "matrix", "rose", "monochrome"] },
+        "isPrivate": { "type": "boolean" },
+        "streakCount": { "type": "number" },
+        "role": { "type": "string", "enum": ["owner", "admin", "moderator", "member"] },
+        "interests": { "type": "array" },
+        "badges": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "createdAt"]
+    },
+    "VibePost": {
+      "title": "VibePost",
+      "description": "Global social feed post, poll, media card, or moodboard entry.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "authorId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "maxLength": 60 },
+        "authorPhoto": { "type": "string", "maxLength": 500 },
+        "authorColor": { "type": "string", "maxLength": 40 },
+        "isOperator": { "type": "boolean" },
+        "anonymous": { "type": "boolean" },
+        "pinned": { "type": "boolean" },
+        "category": { "type": "string", "maxLength": 40 },
+        "mediaUrl": { "type": "string", "maxLength": 600 },
+        "mediaType": { "type": "string", "enum": ["none", "image", "music", "moodboard"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "authorId", "authorName", "createdAt"]
+    },
+    "ChannelSpace": {
+      "title": "ChannelSpace",
+      "description": "Discord-style community server ('Channel Space') with custom roles, channels, and Vibe Leveling.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "description": { "type": "string", "maxLength": 300 },
+        "icon": { "type": "string", "maxLength": 500 },
+        "banner": { "type": "string", "maxLength": 500 },
+        "inviteCode": { "type": "string", "maxLength": 20 },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerName": { "type": "string", "maxLength": 60 },
+        "isPublic": { "type": "boolean" },
+        "vibeXP": { "type": "number" },
+        "level": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId", "inviteCode", "isPublic", "createdAt"]
+    },
+    "SpaceMessage": {
+      "title": "SpaceMessage",
+      "description": "Message or forum thread inside a Channel Space channel.",
+      "type": "object",
+      "properties": {
+        "spaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "channelId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "maxLength": 60 },
+        "authorPhoto": { "type": "string", "maxLength": 500 },
+        "authorRoleName": { "type": "string", "maxLength": 40 },
+        "authorRoleColor": { "type": "string", "maxLength": 20 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "pinned": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["spaceId", "channelId", "authorId", "authorName", "content", "createdAt"]
+    },
+    "DirectMessage": {
+      "title": "DirectMessage",
+      "description": "Direct message between two users with optional disappearing timer.",
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "senderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "recipientId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "senderName": { "type": "string", "maxLength": 60 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["chatId", "senderId", "recipientId", "senderName", "text", "createdAt"]
+    },
+    "CustomRule": {
+      "title": "CustomRule",
+      "description": "User-defined notification and email digest filter rule.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "conditionField": { "type": "string", "enum": ["keyword", "author", "space", "category"] },
+        "conditionValue": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "action": { "type": "string", "enum": ["mute", "priority_push", "email_digest", "auto_flag"] },
+        "enabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name", "conditionField", "conditionValue", "action", "enabled", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Public user profile documents."
+    },
+    "/users/{userId}/rules/{ruleId}": {
+      "schema": { "$ref": "#/entities/CustomRule" },
+      "description": "Private user custom notification and email filtering rules."
+    },
+    "/vibes/{vibeId}": {
+      "schema": { "$ref": "#/entities/VibePost" },
+      "description": "Global social feed vibes, polls, and moodboard posts."
+    },
+    "/channelSpaces/{spaceId}": {
+      "schema": { "$ref": "#/entities/ChannelSpace" },
+      "description": "Discord-style Channel Spaces."
+    },
+    "/channelSpaces/{spaceId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/SpaceMessage" },
+      "description": "Messages inside a Channel Space."
+    },
+    "/directMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/DirectMessage" },
+      "description": "Direct messages between two users."
+    }
+  }
+}
